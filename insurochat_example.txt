@@ -1,0 +1,51 @@
+from pathlib import Path
+import os
+
+import fitz
+from langchain.chains.question_answering import load_qa_chain
+from langchain.llms import OpenAI
+from langchain.chains import load_chain
+
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores.faiss import FAISS
+
+# Specify OPEN API key
+
+os.environ["OPENAI_API_KEY"] = ""
+
+file_name_pdf = Path(os.getcwd()).joinpath('suncorp-insurance-home-contents-insurance-product-disclosure-statement.pdf')
+txt_file_name = Path(os.getcwd()).joinpath(file_name_pdf.stem + '.txt')
+
+# Convert pdf to text in memory
+with fitz.open(file_name_pdf) as pdfreader:
+    text = ""
+    for page in pdfreader:
+        text += page.get_text() + '\n'
+
+
+# Cache text file
+with open(txt_file_name, "w") as f:
+    f.write(text)
+
+# Read text file
+with open(txt_file_name) as f:
+    home_contents = f.read()
+
+text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
+texts = text_splitter.split_text(home_contents)
+
+embeddings = OpenAIEmbeddings()
+faiss_cache = f'faiss-cache-{txt_file_name.stem}'
+
+docsearch = FAISS.from_texts(texts, embeddings)
+
+# Try and compare the answers for the query below. More specific questions get more specific answers.
+query = "What is the maximum cover for a rug under each level"
+# query = "What is the maximum cover for a rug"
+
+docs = docsearch.similarity_search(query)
+
+chain = load_qa_chain(OpenAI(temperature=0), chain_type='stuff')
+
+chain.run(input_documents=docs, question=query)

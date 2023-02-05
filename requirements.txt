@@ -1,0 +1,8 @@
+faiss-cpu==1.7.3
+langchain
+numpy==1.24.1
+openai==0.26.4
+protobuf==3.9.0
+pymupdf==1.21.1
+python-multipart==0.0.5
+tiktoken==0.1.2
