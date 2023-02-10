@@ -1,35 +1,28 @@
 from pathlib import Path
 import os
 import s3fs
-import json
 
 import fitz
 import asyncio
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
-from langchain.chains.question_answering import load_qa_chain
-from langchain.llms import OpenAI
-from langchain.chains import load_chain
-from fastapi.responses import JSONResponse
 
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
 from langchain import OpenAI, VectorDBQA
-import fsspec
-import faiss
 
-from fastapi import FastAPI, File, UploadFile, Body, Request
+from fastapi import FastAPI, File, UploadFile, Body, Request, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from mangum import Mangum
 
 app = FastAPI()
-
 
 @app.post("/uploadfile/")
 async def create_upload_file(file: UploadFile):
     # Convert pdf to text in memory
     if file is not None:
-        stream_bytes = await file.file.read()
+        stream_bytes = file.file.read()
         with fitz.open(stream=stream_bytes, filetype='pdf') as pdfreader:
             text = ""
             for page in pdfreader:
@@ -37,9 +30,11 @@ async def create_upload_file(file: UploadFile):
 
     txt_file_name = os.path.splitext(file.filename)[0] + '.txt'
 
+    url = f's3://insurochat/'
+    file_path = url + txt_file_name
     # Cache text file
     s3 = s3fs.S3FileSystem(anon=False)
-    with s3.open(txt_file_name, "w") as f:
+    with s3.open(file_path, "w") as f:
         f.write(text)
 
     return {"filename": file.filename}
