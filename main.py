@@ -14,9 +14,19 @@ from langchain import OpenAI, VectorDBQA
 
 from fastapi import FastAPI, File, UploadFile, Body, Request, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from mangum import Mangum
 
-app = FastAPI()
+
+class BucketKeyword(BaseModel):
+    keyword: str
+
+class Query(BaseModel):
+    url_endpoint: str
+    query: str
+
+
+app = FastAPI(root_path='/prod/')
 
 @app.post("/uploadfile/")
 async def create_upload_file(file: UploadFile):
@@ -41,7 +51,8 @@ async def create_upload_file(file: UploadFile):
 
 
 @app.post("/listfiles/")
-async def list_files_by_kwarg(request: dict=Body(...)):
+async def list_files_by_kwarg(request: BucketKeyword):
+    request = request.dict()
     keyword = request['keyword']
 
     url = f's3://insurochat/'
@@ -59,7 +70,8 @@ async def list_files_by_kwarg(request: dict=Body(...)):
 
 
 @app.post("/query/")
-async def run_langchain_model(request: dict=Body(...)):
+async def run_langchain_model(request: Query):
+    request = request.dict()
     url_endpoint = request['url_endpoint']
     query = request['query']
 
