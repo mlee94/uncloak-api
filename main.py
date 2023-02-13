@@ -50,11 +50,8 @@ async def create_upload_file(file: UploadFile):
     return {"filename": file.filename}
 
 
-@app.post("/listfiles/")
-async def list_files_by_kwarg(request: BucketKeyword):
-    request = request.dict()
-    keyword = request['keyword']
-
+@app.get("/listfiles/")
+async def list_files_by_kwarg():
     url = f's3://insurochat/'
     s3 = s3fs.S3FileSystem(anon=False)
 
