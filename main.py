@@ -4,6 +4,7 @@ import s3fs
 
 import fitz
 import asyncio
+from typing import Optional
 from hypercorn.config import Config
 from hypercorn.asyncio import serve
 
@@ -14,16 +15,24 @@ from langchain import OpenAI, VectorDBQA
 
 from fastapi import FastAPI, File, UploadFile, Body, Request, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from pydantic import BaseModel
+from pydantic import (
+    BaseModel,
+    Field,
+    validator,
+)
+import fsspec
+import json
 from mangum import Mangum
 
 
-class BucketKeyword(BaseModel):
-    keyword: str
-
 class Query(BaseModel):
     url_endpoint: str
-    query: str
+    query: str = Field(example="What is the maximum cover for a rug?")
+    k: Optional[int] = Field(default=None, example=4)
+
+    @validator('k')
+    def set_name(cls, k):
+        return k or 4
 
 
 app = FastAPI(root_path='/prod/')
@@ -55,7 +64,7 @@ async def list_files_by_kwarg():
     url = f's3://insurochat/'
     s3 = s3fs.S3FileSystem(anon=False)
 
-    file_list = s3.glob(f'{url}*{keyword}*.txt')
+    file_list = s3.glob(f'{url}*.txt')
 
     stem_list = {}
     stem_list['Filelist'] = []
@@ -95,6 +104,7 @@ async def run_langchain_model(request: Query):
 
     qa = VectorDBQA.from_chain_type(
         llm=OpenAI(temperature=0), chain_type="stuff", vectorstore=docsearch,
+        k=k,  # Number of docs to query for
         return_source_documents=True
     )
 
