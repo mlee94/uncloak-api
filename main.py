@@ -77,9 +77,10 @@ async def list_files_by_kwarg():
 
 @app.post("/query/")
 async def run_langchain_model(request: Query):
-    request = request.dict()
-    url_endpoint = request['url_endpoint']
-    query = request['query']
+    url_endpoint = request.url_endpoint
+    query = request.query
+    k = request.k
+
 
     # url_endpoint = 'suncorp-insurance-home-contents-insurance-product-disclosure-statement'
     # Read text file
