@@ -28,7 +28,7 @@ from mangum import Mangum
 class Query(BaseModel):
     url_endpoint: str
     query: str = Field(example="What is the maximum cover for a rug?")
-    k: Optional[int] = Field(default=None, example=4)
+    k: Optional[int] = Field(default=4, example=4)
 
     @validator('k')
     def set_name(cls, k):
