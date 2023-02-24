@@ -156,14 +156,16 @@ async def run_langchain_model(request: Query):
     prompt = PromptTemplate(input_variables=["context"], template=template)
 
     qa = VectorDBQA.from_llm(
-        llm=OpenAI(temperature=0),
+        llm=llm,
         prompt=prompt,
-        vectorstore=docsearch,
+        vectorstore=vectorstore,
         k=k,  # Number of docs to query for
         return_source_documents=True
     )
 
     result = qa({"query": query})
+    result['total_tokens'] = total_tokens
+    result['price_estimate_dollars'] = price_estimate
 
     return result
 
