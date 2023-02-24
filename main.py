@@ -42,7 +42,6 @@ app = FastAPI()
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "https://www.uncloak.ai",
 ]
 app.add_middleware(
     CORSMiddleware,
