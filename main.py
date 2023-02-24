@@ -95,10 +95,16 @@ async def run_langchain_model(request: Query):
             if not chunk:
                 break
             contents += chunk
-        home_contents = contents.decode('utf-8')
+        home_contents = json.loads(contents.decode('utf-8'))
 
-    text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
-    texts = text_splitter.split_text(home_contents)
+    text_list = []
+    meta_data = []
+    for (page, text) in home_contents.items():
+        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
+        texts = text_splitter.split_text(text)
+        for txt in texts:
+            meta_data.append({'page': page})
+        text_list += texts
 
     embeddings = OpenAIEmbeddings()
     docsearch = FAISS.from_texts(text_list, embeddings, metadatas=meta_data)
