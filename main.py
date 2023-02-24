@@ -12,6 +12,8 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
 from langchain import OpenAI, VectorDBQA, PromptTemplate
+import faiss
+import pickle
 
 from fastapi import FastAPI, File, UploadFile, Body, Request, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,7 +26,6 @@ from pydantic import (
 import fsspec
 import json
 from mangum import Mangum
-
 
 class Query(BaseModel):
     url_endpoint: str
@@ -58,20 +59,39 @@ async def create_upload_file(file: UploadFile):
     if file is not None:
         stream_bytes = file.file.read()
         with fitz.open(stream=stream_bytes, filetype='pdf') as pdfreader:
-            text = {}
+            doc = {}
             for idx, page in enumerate(pdfreader):
-                text[f'{idx}'] = page.get_text() + '\n'
+                doc[f'{idx}'] = page.get_text() + '\n'
 
-    txt_file_name = os.path.splitext(file.filename)[0] + '.json'
+    txt_file_name = os.path.splitext(file.filename)[0]
+
+    text_list = []
+    meta_data = []
+    for (page, text) in doc.items():
+        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
+        texts = text_splitter.split_text(text)
+        for txt in texts:
+            meta_data.append({'page': page})
+        text_list += texts
+
+    # Ensure ada for embedding API
+    embeddings = OpenAIEmbeddings(
+        document_model_name="text-embedding-ada-002",
+        query_model_name="text-embedding-ada-002",
+    )
 
     url = f's3://insurochat/'
-    file_path = url + txt_file_name
+    vectorstore = FAISS.from_texts(text_list, embeddings, metadatas=meta_data)
+    faiss.write_index(vectorstore.index, f"{txt_file_name}_docs.index")
+    vectorstore.index = None
+
     # Cache text file
     s3 = s3fs.S3FileSystem(anon=False)
-    with s3.open(file_path, "wb") as f:
-        f.write(json.dumps(text).encode('utf-8'))
+    # Store vectorstore in S3 without index
+    with s3.open(url + f"{txt_file_name}.pkl", "wb") as f:
+        pickle.dump(vectorstore, f)
 
-    return {"filename": txt_file_name}
+    return {"filename": file.filename}
 
 
 @app.get("/listfiles/")
