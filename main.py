@@ -99,7 +99,7 @@ async def list_files_by_kwarg():
     url = f's3://insurochat/'
     s3 = s3fs.S3FileSystem(anon=False)
 
-    file_list = s3.glob(f'{url}*.json')
+    file_list = s3.glob(f'{url}*.pkl')
 
     stem_list = {}
     stem_list['Filelist'] = []
