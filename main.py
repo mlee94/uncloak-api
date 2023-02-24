@@ -67,10 +67,10 @@ async def create_upload_file(file: UploadFile):
     file_path = url + txt_file_name
     # Cache text file
     s3 = s3fs.S3FileSystem(anon=False)
-    with s3.open(file_path, "w") as f:
-        f.write(text)
+    with s3.open(file_path, "wb") as f:
+        f.write(json.dumps(text).encode('utf-8'))
 
-    return {"filename": file.filename}
+    return {"filename": txt_file_name}
 
 
 @app.get("/listfiles/")
