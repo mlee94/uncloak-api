@@ -11,7 +11,7 @@ from hypercorn.asyncio import serve
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
-from langchain import OpenAI, VectorDBQA
+from langchain import OpenAI, VectorDBQA, PromptTemplate
 
 from fastapi import FastAPI, File, UploadFile, Body, Request, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -101,10 +101,21 @@ async def run_langchain_model(request: Query):
     texts = text_splitter.split_text(home_contents)
 
     embeddings = OpenAIEmbeddings()
-    docsearch = FAISS.from_texts(texts, embeddings)
+    docsearch = FAISS.from_texts(text_list, embeddings, metadatas=meta_data)
+    template = """
+    Answer the question below in a friendly manner. 
+    
+    You are not allowed to answer no, unless there are no exclusions, or conditions.
+    
+    Question: {context}
+    """
 
-    qa = VectorDBQA.from_chain_type(
-        llm=OpenAI(temperature=0), chain_type="stuff", vectorstore=docsearch,
+    prompt = PromptTemplate(input_variables=["context"], template=template)
+
+    qa = VectorDBQA.from_llm(
+        llm=OpenAI(temperature=0),
+        prompt=prompt,
+        vectorstore=docsearch,
         k=k,  # Number of docs to query for
         return_source_documents=True
     )
