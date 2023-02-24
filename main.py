@@ -43,11 +43,11 @@ async def create_upload_file(file: UploadFile):
     if file is not None:
         stream_bytes = file.file.read()
         with fitz.open(stream=stream_bytes, filetype='pdf') as pdfreader:
-            text = ""
-            for page in pdfreader:
-                text += page.get_text() + '\n'
+            text = {}
+            for idx, page in enumerate(pdfreader):
+                text[f'{idx}'] = page.get_text() + '\n'
 
-    txt_file_name = os.path.splitext(file.filename)[0] + '.txt'
+    txt_file_name = os.path.splitext(file.filename)[0] + '.json'
 
     url = f's3://insurochat/'
     file_path = url + txt_file_name
