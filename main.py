@@ -127,10 +127,8 @@ async def run_langchain_model(request: Query):
     )
 
     result = qa({"query": query})
-    answer = result["result"]
-    source_docs = result["source_documents"]
 
-    return answer
+    return result
 
 
 
