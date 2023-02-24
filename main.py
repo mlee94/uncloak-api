@@ -14,6 +14,7 @@ from langchain.vectorstores.faiss import FAISS
 from langchain import OpenAI, VectorDBQA, PromptTemplate
 
 from fastapi import FastAPI, File, UploadFile, Body, Request, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import (
     BaseModel,
@@ -35,7 +36,20 @@ class Query(BaseModel):
         return k or 4
 
 
-app = FastAPI(root_path='/prod/')
+app = FastAPI()
+
+# CORS Settings
+origins = [
+  "http://localhost",
+  "http://localhost:3000",
+]
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=origins,
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
 
 @app.post("/uploadfile/")
 async def create_upload_file(file: UploadFile):
