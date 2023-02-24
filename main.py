@@ -98,22 +98,19 @@ async def run_langchain_model(request: Query):
 
     # url_endpoint = 'suncorp-insurance-home-contents-insurance-product-disclosure-statement'
     # Read text file
-    url = f's3://insurochat/{url_endpoint}.txt'
+    url = f's3://insurochat/{url_endpoint}.json'
 
     s3 = s3fs.S3FileSystem(anon=False)
     with s3.open(url, 'rb') as f:
-        chunk_size = 1024 * 1024  # 1 MB
-        contents = b''
-        while True:
-            chunk = f.read(chunk_size)
-            if not chunk:
-                break
-            contents += chunk
-        home_contents = json.loads(contents.decode('utf-8'))
+        data = ""
+        for line in f:
+            # parse line as JSON
+            data += line.decode('utf-8')
+        json_contents = json.loads(data)
 
     text_list = []
     meta_data = []
-    for (page, text) in home_contents.items():
+    for (page, text) in json_contents.items():
         text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
         texts = text_splitter.split_text(text)
         for txt in texts:
