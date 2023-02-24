@@ -116,34 +116,39 @@ async def run_langchain_model(request: Query):
     query = request.query
     k = request.k
 
-
-    # url_endpoint = 'suncorp-insurance-home-contents-insurance-product-disclosure-statement'
-    # Read text file
-    url = f's3://insurochat/{url_endpoint}.json'
+    # Read json file
+    url = 's3://insurochat/'
 
     s3 = s3fs.S3FileSystem(anon=False)
-    with s3.open(url, 'rb') as f:
-        data = ""
-        for line in f:
-            # parse line as JSON
-            data += line.decode('utf-8')
-        json_contents = json.loads(data)
+    fs = fsspec.filesystem('file')
 
-    text_list = []
-    meta_data = []
-    for (page, text) in json_contents.items():
-        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
-        texts = text_splitter.split_text(text)
-        for txt in texts:
-            meta_data.append({'page': page})
-        text_list += texts
+    # Check if disk cache exists
+    if s3.exists(url + f"{url_endpoint}_faiss_store.pkl") and fs.exists(f"{url_endpoint}_docs.index"):
+        # Read vectorstore from S3 without index
+        with s3.open(url + f"{url_endpoint}_faiss_store.pkl", "rb") as f:
+            vectorstore = pickle.load(f)
+        index = faiss.read_index(f"{url_endpoint}_docs.index")
+        vectorstore.index = index
 
-    embeddings = OpenAIEmbeddings()
-    docsearch = FAISS.from_texts(text_list, embeddings, metadatas=meta_data)
+    text_list = ""
+    doc_store = vectorstore.docstore._dict.values()
+    for i in doc_store:
+        text_list += i.page_content
+
+    # davinci 3 for completions API
+    llm = OpenAI(model_name='text-davinci-003', temperature=0)
+    token_doc_estimate = llm.get_num_tokens(text_list)
+    token_query_estimate = llm.get_num_tokens(query)
+    doc_length = len(doc_store)
+
+    total_tokens = (
+        token_doc_estimate + (doc_length + 1) * 14
+        + (doc_length + 1) * token_query_estimate
+    )
+    price_estimate = total_tokens / 1000 * 0.0004  # For text-embedding-ada only; excludes completions.
+
     template = """
-    Answer the question below in a friendly manner. 
-    
-    You are not allowed to answer no, unless there are no exclusions, or conditions.
+    Answer the question below as clearly as possible, stating any exclusions, or conditions.
     
     Question: {context}
     """
