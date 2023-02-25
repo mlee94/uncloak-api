@@ -172,7 +172,7 @@ async def run_langchain_model(request: Query):
     # Hack to append score to metadata:
     docs = []
     for (doc, score) in similarity_docs:
-        doc.metadata['euclidean_distance'] = score
+        doc.metadata['euclidean_distance'] = str(score)
         docs.append(doc)
 
     answer, _ = qa.combine_documents_chain.combine_docs(docs, question=query)
@@ -180,8 +180,8 @@ async def run_langchain_model(request: Query):
         'query': query,
         'result': answer,
         'source_documents': docs,
-        'total tokens': total_tokens,
-        'price_estimate_dollars': price_estimate,
+        'total tokens': str(total_tokens),
+        'price_estimate_dollars': str(price_estimate)
     }
 
     return result
