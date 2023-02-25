@@ -11,7 +11,9 @@ from hypercorn.asyncio import serve
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
-from langchain import OpenAI, VectorDBQA, PromptTemplate
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain import OpenAI, VectorDBQA, PromptTemplate, LLMChain
+
 import faiss
 import pickle
 
@@ -114,7 +116,9 @@ async def list_files_by_kwarg():
 async def run_langchain_model(request: Query):
     url_endpoint = request.url_endpoint
     query = request.query
-    k = request.k
+    k = request.k  # Euclidean nearest neighbours
+    if k > 20:
+        raise ValueError('k is too high, possible high expenditure')
 
     # Read json file
     url = 's3://insurochat/'
@@ -145,7 +149,7 @@ async def run_langchain_model(request: Query):
         token_doc_estimate + (doc_length + 1) * 14
         + (doc_length + 1) * token_query_estimate
     )
-    price_estimate = total_tokens / 1000 * 0.0004  # For text-embedding-ada only; excludes completions.
+    price_estimate = total_tokens / 1000 * 0.0004  # Approx only as token includes embeddings/completions
 
     template = """
     Answer the question below as clearly as possible, stating any exclusions, or conditions.
@@ -157,15 +161,28 @@ async def run_langchain_model(request: Query):
 
     qa = VectorDBQA.from_llm(
         llm=llm,
+        search_type='similarity',  # mmr
         prompt=prompt,
         vectorstore=vectorstore,
         k=k,  # Number of docs to query for
         return_source_documents=True
     )
+    similarity_docs = vectorstore.similarity_search_with_score(query, k=qa.k)
 
-    result = qa({"query": query})
-    result['total_tokens'] = total_tokens
-    result['price_estimate_dollars'] = price_estimate
+    # Hack to append score to metadata:
+    docs = []
+    for (doc, score) in similarity_docs:
+        doc.metadata['euclidean_distance'] = score
+        docs.append(doc)
+
+    answer, _ = qa.combine_documents_chain.combine_docs(docs, question=query)
+    result = {
+        'query': query,
+        'result': answer,
+        'source_documents': docs,
+        'total tokens': total_tokens,
+        'price_estimate_dollars': price_estimate,
+    }
 
     return result
 
