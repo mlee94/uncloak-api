@@ -9,7 +9,7 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import CharacterTextSplitter, RecursiveCharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
 from langchain import OpenAI, VectorDBQA, PromptTemplate, LLMChain
@@ -70,7 +70,7 @@ async def create_upload_file(file: UploadFile):
     text_list = []
     meta_data = []
     for (page, text) in doc.items():
-        text_splitter = CharacterTextSplitter(separator='\n', chunk_size=1000, chunk_overlap=0)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
         texts = text_splitter.split_text(text)
         for txt in texts:
             meta_data.append({'page': page})
