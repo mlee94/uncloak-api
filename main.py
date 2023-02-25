@@ -152,7 +152,7 @@ async def run_langchain_model(request: Query):
     price_estimate = total_tokens / 1000 * 0.0004  # Approx only as token includes embeddings/completions
 
     template = """
-    Answer the question below as clearly as possible, stating any exclusions, or conditions.
+    Answer the question below with reference to financial information if possible, stating any exclusions, or conditions.
     
     Question: {context}
     """
