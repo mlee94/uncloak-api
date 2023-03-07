@@ -90,7 +90,7 @@ async def create_upload_file(file: UploadFile):
     # Cache text file
     s3 = s3fs.S3FileSystem(anon=False)
     # Store vectorstore in S3 without index
-    with s3.open(url + f"{txt_file_name}_faiss_store.pkl", "wb") as f:
+    with s3.open(url + f"{txt_file_name}.pkl", "wb") as f:
         pickle.dump(vectorstore, f)
 
     return {"filename": file.filename}
@@ -127,9 +127,9 @@ async def run_langchain_model(request: Query):
     fs = fsspec.filesystem('file')
 
     # Check if disk cache exists
-    if s3.exists(url + f"{url_endpoint}_faiss_store.pkl") and fs.exists(f"{url_endpoint}_docs.index"):
+    if s3.exists(url + f"{url_endpoint}.pkl") and fs.exists(f"{url_endpoint}_docs.index"):
         # Read vectorstore from S3 without index
-        with s3.open(url + f"{url_endpoint}_faiss_store.pkl", "rb") as f:
+        with s3.open(url + f"{url_endpoint}.pkl", "rb") as f:
             vectorstore = pickle.load(f)
         index = faiss.read_index(f"{url_endpoint}_docs.index")
         vectorstore.index = index
